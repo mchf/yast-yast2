@@ -1004,20 +1004,30 @@ module Yast
       devs = FilterNOT(@Devices, devregex)
       Builtins.y2debug("Devs=%1", devs)
 
-      devices = Builtins.mapmap(devices) do |typ, devsmap|
-        {
-          typ => Builtins.mapmap(
-            Convert.convert(
-              devsmap,
-              from: "map",
-              to:   "map <string, map <string, any>>"
-            )
-          ) do |num, config|
-            config = CanonicalizeIP(config)
-            config = CanonicalizeStartmode(config)
-            { num => config }
-          end
-        }
+      if devices.nil? || devices == {}
+        devices = @OriginalDevices
+
+        # devices == $[] is used in lan_auto "Reset" as a way how to
+        # rollback changes imported from AY
+        @initialized = false
+      else
+        devices = Builtins.mapmap(devices) do |typ, devsmap|
+          {
+            typ => Builtins.mapmap(
+              Convert.convert(
+                devsmap,
+                from: "map",
+                to:   "map <string, map <string, any>>"
+              )
+            ) do |num, config|
+              config = CanonicalizeIP(config)
+              config = CanonicalizeStartmode(config)
+              { num => config }
+            end
+          }
+        end
+
+        @initialized = true
       end
 
       @Devices = Convert.convert(
@@ -1025,14 +1035,6 @@ module Yast
         from: "map",
         to:   "map <string, map <string, map <string, any>>>"
       )
-
-      if devices.nil? || devices == {}
-        # devices == $[] is used in lan_auto "Reset" as a way how to
-        # rollback changes imported from AY
-        @initialized = false
-      else
-        @initialized = true
-      end
 
       Builtins.y2milestone(
         "NetworkInterfaces::Import - done, cache content: %1",
